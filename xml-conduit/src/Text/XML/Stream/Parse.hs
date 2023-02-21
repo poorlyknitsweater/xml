@@ -92,6 +92,11 @@ module Text.XML.Stream.Parse
     , tagIgnoreAttrs
     , content
     , contentMaybe
+      -- * Tokenization
+    , conduitToken
+    , Token(..)
+    , TAttribute
+    , TName(..)
       -- * Ignoring tags/trees
     , ignoreEmptyTag
     , ignoreTree
