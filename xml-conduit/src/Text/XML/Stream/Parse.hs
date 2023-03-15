@@ -251,14 +251,25 @@ tokenToEvent ps es n tok@(TokenContent c@(ContentEntity e))
   newtoks = resolveEntities ps es [tok]
 tokenToEvent _ es n (TokenContent c) = (es, n, [EventContent c])
 tokenToEvent _ es n (TokenComment c) = (es, n, [EventComment c])
-tokenToEvent _ es n (TokenDoctype t eid es') = (es ++ es', n, [EventBeginDoctype t eid, EventEndDoctype])
+tokenToEvent ps es n (TokenDoctype t eid es') =
+  -- If we aren't resolving custom entities anyways, we don't need
+  -- to keep track of them in the first place.
+  ( if psResolveEntities ps then es ++ es' else es
+  , n
+  , [EventBeginDoctype t eid, EventEndDoctype]
+  )
 tokenToEvent _ es n (TokenCDATA t) = (es, n, [EventCDATA t])
 
+-- | Resolve entities in the entity table if 'psResolveEntities' is set.
+-- Predefined entities (>, <, ", ', &) are resolved in the tokenizer already.
+-- (See 'parseContent').
 resolveEntities :: ParseSettings
                 -> EntityTable
                 -> [Token]
                 -> [Token]
-resolveEntities ps entities = foldr go []
+resolveEntities ps entities
+ | psResolveEntities ps = foldr go []
+ | otherwise = id
  where
   go tok@(TokenContent (ContentEntity e)) toks
     = case expandEntity entities e of
@@ -469,6 +480,8 @@ data ParseSettings = ParseSettings
     -- Default: @8192@
     --
     -- Since 1.9.1
+    , psResolveEntities :: Bool
+    -- ^ Whether to resolve any custom entities at all.
     }
 
 instance Default ParseSettings where
@@ -477,6 +490,7 @@ instance Default ParseSettings where
         , psRetainNamespaces = False
         , psDecodeIllegalCharacters = const Nothing
         , psEntityExpansionSizeLimit = 8192
+        , psResolveEntities = True
         }
 
 conduitToken :: MonadThrow m => ParseSettings -> ConduitT T.Text (PositionRange, Token) m ()
@@ -636,7 +650,7 @@ parseContent :: ParseSettings
              -> Bool -- break on double quote
              -> Bool -- break on single quote
              -> Parser Content
-parseContent (ParseSettings decodeEntities _ decodeIllegalCharacters _) breakDouble breakSingle = parseReference <|> parseTextContent where
+parseContent (ParseSettings decodeEntities _ decodeIllegalCharacters _ _) breakDouble breakSingle = parseReference <|> parseTextContent where
   parseReference = do
     char' '&'
     t <- parseEntityRef <|> parseHexCharRef <|> parseDecCharRef
