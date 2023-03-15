@@ -82,6 +82,7 @@ module Text.XML.Stream.Parse
     , psDecodeIllegalCharacters
     , psRetainNamespaces
     , psEntityExpansionSizeLimit
+    , psResolveEntities
       -- *** Entity decoding
     , decodeXmlEntities
     , decodeHtmlEntities

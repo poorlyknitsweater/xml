@@ -84,6 +84,7 @@ main = hspec $ do
         it "identifies unresolved entities" resolvedIdentifies
         it "decodeHtmlEntities" testHtmlEntities
         it "works for resolvable entities" resolvedAllGood
+        it "ignores custom entities when psResolveEntities is False" dontResolveEntities
         it "merges adjacent content nodes" resolvedMergeContent
         it "understands inline entity declarations" resolvedInline
         it "understands complex inline with markup" resolvedInlineComplex
@@ -721,6 +722,27 @@ resolvedAllGood =
     Res.toXMLDocument (Res.parseLBS_ def xml)
   where
     xml = "<foo><bar/><baz/></foo>"
+
+dontResolveEntities :: Expectation
+dontResolveEntities =
+  D.parseLBS_ settings xml @=? expectedDocument
+  where
+    settings = def { P.psResolveEntities = False }
+
+    xml = mconcat
+      [ "<!DOCTYPE mydt [ <!ENTITY foo \"fooby\" > ]>"
+      , "<root>&gt;&foo;&bar;</root>"
+      ]
+
+    expectedDocument =
+      Document
+        (Prologue [] (Just (Doctype "mydt" Nothing)) [])
+        (Element "root" mempty
+          [ NodeContent (ContentText ">")
+          , NodeContent (ContentEntity "foo")
+          , NodeContent (ContentEntity "bar")
+          ])
+        []
 
 resolvedMergeContent =
     Res.documentRoot (Res.parseLBS_ def xml) @=?
