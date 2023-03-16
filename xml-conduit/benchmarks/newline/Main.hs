@@ -15,6 +15,7 @@ main :: IO ()
 main = do
   defaultMain
     [ bench "with newline normalization" $ whnfIO (parse "./big.xml")
+    , bench "with newline normalization, no carriage returns" $ whnfIO (parse "./big-nocr.xml")
     ]
 
   where
